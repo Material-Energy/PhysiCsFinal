@@ -1,6 +1,21 @@
 Web VPython 3.2
 
+B = 1.0 # magnitude of mangetic field from external magnets
+V = 5.0 # source voltage
+R = 1.0 # resistance of wire
 
+B_vec = vec(1, 0, 0)
+lf = vec(0, 0, 0)
+rf = vec(0, 0, 0)
+
+i_wire = V / R
+L = 3 # height of loop
+r = 2.5 # radius of loop
+I = 2.0 # moment of inertia of the armature
+
+t = 0
+dt = 0.1
+    
 #circle = shapes.circle(radius=0.25, np=128)
 #line_path = paths.curv
 #
@@ -8,13 +23,38 @@ Web VPython 3.2
 #ext = extrusion(shape = circle, path=line_path)
 #ext.rotate(axis = vec(1, 0, 0), angle=pi/6)
 
+def update_arrows(path):
+    global lf, rf
+    
+    lf.visible = False
+    rf.visible = False
+    
+    
+    L_vec = path[3]-path[2]
+    arrow(axis=L_vec)
+    arrow(axis=B_vec)
+#    arrow(axis = cross(L_vec, B_vec))
+    
+    
+    midpoint = (path[2] + path[3]) / 2
+    lf = arrow(pos=midpoint, axis = 2 * norm(cross(L_vec, B_vec)), shaftwidth=0.1)
+    
+    midpoint = (path[4] + path[5]) / 2
+    L_vec = path[5] - path[4]
+    rf = arrow(pos=midpoint, axis = 2 * norm(cross(L_vec, B_vec)), shaftwidth=0.1)
+    
+    lf.visible = True
+    rf.visible = True
+    
+    
+    
 scene.forward = vec(0, -1, 0)
-width = 5
-height = 3
+width = 2 * r
+height = L
 bronze = vec(1,0.7,0.2)
 
 path = paths.rectangle(width=width, height = height)
-#print(path)
+print(path)
 path.insert(0, path[0]+vec(-width/4, 0, 0))
 path[-1] = path[-2] + vec(width/4, 0, 0)
 
@@ -36,4 +76,57 @@ commutatorL.rotate(axis=vector(1, 0, 0), angle=-pi/6)
 arc = paths.arc(pos=wire.point(wire.npoints - 1)['pos'] + vec(-wire.point(wire.npoints - 1)['pos'].x - width/40, 0, 1), radius = width/4, angle1=pi/24 + pi/2, angle2=23*pi/24 + pi/2)
 commutatorR = extrusion(shape=shapes.rectangle(width=0.1, height=2), path=arc, color=bronze)
 commutatorR.rotate(axis=vector(1, 0, 0), angle=-pi/6)
+
+
+
+
+# physics stuff
+A = width * height
+
+omega = 0
+
+V_back = B*A*omega*sin(omega*t)
+
+domega_dt = (r*B*L) / (I*R) * (V - V_back)
+
+omega += domega_dt * dt
+
+
+i_loop = i_wire - V_back / R
+F_B = i_loop * B * L
+
+update_arrows(path, lf, rf)
+
+print(omega*dt)
+
+
+rotation_axis = vec(0,0,-1).rotate(angle = -3 * pi/4, axis=vec(1, 0, 0))
+arrow(axis = rotation_axis)
+
+for i in range(len(path)):
+    path[i] = rotate(path[i], axis=rotation_axis, angle=omega*dt)
+    
+wire.visible = False
+wire = curve(pos=path, radius = 0.1, color=bronze)
+wire.visible = True
+
+
+update_arrows(path, lf, rf)
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #commutator.rotate(axis=wire.point(wire.npoints - 1)['pos'], angle=pi/2)
