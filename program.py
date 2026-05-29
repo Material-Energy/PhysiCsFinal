@@ -15,7 +15,9 @@ I = 2.0 # moment of inertia of the armature
 
 t = 0
 dt = 0.1
-    
+
+
+rotation_axis = vec(0,0,-1).rotate(angle = -3 * pi/4, axis=vec(1, 0, 0))
 #circle = shapes.circle(radius=0.25, np=128)
 #line_path = paths.curv
 #
@@ -47,8 +49,7 @@ def update_arrows(path):
     rf.visible = True
     
     
-    
-scene.forward = vec(0, -1, 0)
+scene.forward = vec(0, -1, 1)
 width = 2 * r
 height = L
 bronze = vec(1,0.7,0.2)
@@ -58,8 +59,8 @@ print(path)
 path.insert(0, path[0]+vec(-width/4, 0, 0))
 path[-1] = path[-2] + vec(width/4, 0, 0)
 
-path.insert(0, path[0]+vec(0, 0, height))
-path.append(path[-1]+vec(0, 0, height))
+path.insert(0, path[0]+vec(0, 0, height/2))
+path.append(path[-1]+vec(0, 0, height/2))
 
 for i in range(len(path)):
     path[i] = rotate(path[i], axis=vector(1, 0, 0), angle=-3*pi/4)
@@ -69,15 +70,15 @@ wire = curve(pos=path, radius = 0.1, color=bronze)
 #print(wire.slice(0, wire.npoint)[0])
 print(wire.point(0)['pos'])
 
-arc = paths.arc(pos=wire.point(0)['pos'] + vec(-wire.point(0)['pos'].x + width/40, 0, 1), radius = width/4, angle1=pi/24 - pi/2, angle2=23*pi/24 - pi/2)
-commutatorL = extrusion(shape=shapes.rectangle(width=0.1, height=2), path=arc, color=bronze)
-commutatorL.rotate(axis=vector(1, 0, 0), angle=-pi/6)
+arc = paths.arc(pos=wire.point(0)['pos'] + vec(-wire.point(0)['pos'].x, 0, 0), radius = width/4 + width / 80, angle1=pi/32 - pi/2, angle2=31*pi/32 - pi/2)
+commutator_left = extrusion(shape=shapes.rectangle(width=0.1, height=2), path=arc, color=bronze)
+commutator_left.rotate(axis=vector(1, 0, 0), angle=3 * pi/4)
 
-arc = paths.arc(pos=wire.point(wire.npoints - 1)['pos'] + vec(-wire.point(wire.npoints - 1)['pos'].x - width/40, 0, 1), radius = width/4, angle1=pi/24 + pi/2, angle2=23*pi/24 + pi/2)
-commutatorR = extrusion(shape=shapes.rectangle(width=0.1, height=2), path=arc, color=bronze)
-commutatorR.rotate(axis=vector(1, 0, 0), angle=-pi/6)
+arc = paths.arc(pos=wire.point(wire.npoints - 1)['pos'] + vec(-wire.point(wire.npoints - 1)['pos'].x, 0, 0), radius = width/4+ width / 80, angle1=pi/32 + pi/2, angle2=31*pi/32 + pi/2)
+commutator_right = extrusion(shape=shapes.rectangle(width=0.1, height=2), path=arc, color=bronze)
+commutator_right.rotate(axis=vector(1, 0, 0), angle=3 * pi/4)
 
-
+commutators = compound([commutator_left, commutator_right])
 
 
 # physics stuff
@@ -100,33 +101,23 @@ update_arrows(path, lf, rf)
 print(omega*dt)
 
 
-rotation_axis = vec(0,0,-1).rotate(angle = -3 * pi/4, axis=vec(1, 0, 0))
 arrow(axis = rotation_axis)
 
-for i in range(len(path)):
-    path[i] = rotate(path[i], axis=rotation_axis, angle=omega*dt)
-    
-wire.visible = False
-wire = curve(pos=path, radius = 0.1, color=bronze)
-wire.visible = True
 
-
-update_arrows(path, lf, rf)
+while t < 10:
+    t += dt
+    rate (1 / dt)
     
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#commutator.rotate(axis=wire.point(wire.npoints - 1)['pos'], angle=pi/2)
+    for i in range(len(path)):
+        path[i] = rotate(path[i], axis=rotation_axis, angle=omega*dt)
+        
+    wire.visible = False
+    wire = curve(pos=path, radius = 0.1, color=bronze)
+    wire.visible = True
+    
+    
+    update_arrows(path, lf, rf)
+    
+    commutators.rotate(axis=rotation_axis, angle = omega* dt)
+    
