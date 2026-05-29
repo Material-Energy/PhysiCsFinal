@@ -2,7 +2,7 @@ Web VPython 3.2
 
 B = 1.0 # magnitude of mangetic field from external magnets
 V = 5.0 # source voltage
-R = 1.0 # resistance of wire
+R = 10 # resistance of wire
 
 B_vec = vec(1, 0, 0)
 lf = vec(0, 0, 0)
@@ -14,7 +14,7 @@ r = 2.5 # radius of loop
 I = 2.0 # moment of inertia of the armature
 
 t = 0
-dt = 0.1
+dt = 0.01
 
 
 rotation_axis = vec(0,0,-1).rotate(angle = -3 * pi/4, axis=vec(1, 0, 0))
@@ -83,30 +83,39 @@ commutators = compound([commutator_left, commutator_right])
 
 # physics stuff
 A = width * height
-
+ 
+theta = 0
 omega = 0
 
-V_back = B*A*omega*sin(omega*t)
-
-domega_dt = (r*B*L) / (I*R) * (V - V_back)
-
-omega += domega_dt * dt
-
-
-i_loop = i_wire - V_back / R
-F_B = i_loop * B * L
-
-update_arrows(path, lf, rf)
-
-print(omega*dt)
-
-
-arrow(axis = rotation_axis)
+RPM_graph = graph(title = "RPM vs time", xtitle = "t", ytitle = "RPM")
+gd = gdots()
 
 
 while t < 10:
     t += dt
     rate (1 / dt)
+    
+    V_back = B*A*omega*sin(theta)
+    
+    domega_dt = (r*B*L) / (I*R) * (V - V_back)
+    omega += domega_dt * dt
+    theta += omega * dt
+    
+    
+    
+    i_loop = i_wire - V_back / R
+    F_B = i_loop * B * L
+    
+    update_arrows(path, lf, rf)
+    
+#    print(f"Omega*dt: {omega*dt}")
+#    print(f"RPM: {r*omega}")
+    RPM_graph.select()
+    gd.plot(t, r*omega)
+
+
+    arrow(axis = rotation_axis)
+    
     
 
     for i in range(len(path)):
