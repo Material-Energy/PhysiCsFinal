@@ -1,11 +1,7 @@
 Web VPython 3.2
 
 B = 1.0 # magnitude of mangetic field from external magnets
-<<<<<<< HEAD
 V = 10.0 # source voltage
-=======
-V = 5.0 # source voltage
->>>>>>> 18e629242a3af4adc92587e933860cf25d37ee88
 R = 1 # resistance of wire
 
 B_vec = vec(1, 0, 0)
@@ -102,16 +98,8 @@ while t < 1000:
     t += dt
     rate (1 / dt)
     
-<<<<<<< HEAD
     V_back = abs(B*A*omega*sin(theta))
     print(f"{V_back:.4f}")
-=======
-    V_back = B*A*omega*sin(theta)
-    print(V_back)
-    
-    L /= 100
-    r /= 100
->>>>>>> 18e629242a3af4adc92587e933860cf25d37ee88
     
     L /= 100
     r /= 100
@@ -130,14 +118,10 @@ while t < 1000:
 #    print(f"Omega*dt: {omega*dt}")
     print(f"omega: {omega:.4f}")
     RPM_graph.select()
-<<<<<<< HEAD
     gd1.plot(t, omega * 60 / (2*pi))
     
     flux_graph.select()
     gd2.plot(t, B*A*cos(theta))
-=======
-    gd.plot(t, omega * 60 / (2*pi))
->>>>>>> 18e629242a3af4adc92587e933860cf25d37ee88
 
 
     arrow(axis = rotation_axis)
@@ -155,12 +139,6 @@ while t < 1000:
     update_arrows(path, lf, rf)
     
     commutators.rotate(axis=rotation_axis, angle = omega*dt)
-<<<<<<< HEAD
-=======
-    
-    L *= 100
-    r *= 100
->>>>>>> 18e629242a3af4adc92587e933860cf25d37ee88
     
     L *= 100
     r *= 100
