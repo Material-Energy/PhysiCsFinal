@@ -1,7 +1,7 @@
 Web VPython 3.2
 
 B = 1.0 # magnitude of mangetic field from external magnets
-V = 10.0 # source voltage
+V = 5.0 # source voltage
 R = 1 # resistance of wire
 
 B_vec = vec(1, 0, 0)
@@ -9,12 +9,14 @@ lf = vec(0, 0, 0)
 rf = vec(0, 0, 0)
 
 i_wire = V / R
-L = 3 # height of loop (cm)
-r = 2.5 # radius of loop (cm)
-I = 1e-3 # moment of inertia of the armature
+L = 0.03 # height of loop (m)
+r = 0.025 # radius of loop (m)
+I = 1e-5 # moment of inertia of the armature
+loops = 10
 
 t = 0
 dt = 0.01
+xmax = 3.0
 
 
 rotation_axis = vec(0,0,-1).rotate(angle = -3 * pi/4, axis=vec(1, 0, 0))
@@ -50,8 +52,8 @@ def update_arrows(path):
     
     
 scene.forward = vec(0, -1, 1)
-width = 2 * r
-height = L
+width = 2 * 100*r
+height = 100*L
 bronze = vec(1,0.7,0.2)
 
 path = paths.rectangle(width=width, height = height)
@@ -87,59 +89,85 @@ A = width * height * 0.01 ** 2
 theta = 0
 omega = 0
 
-RPM_graph = graph(title = "RPM vs time", xtitle = "t", ytitle = "RPM")
-gd1 = gdots()
+RPM_graph = graph(title = "RPM vs time", xtitle = "t", ytitle = "RPM", scroll=True, xmin = 0, xmax = xmax)
+gc1 = gcurve()
 
-flux_graph = graph(title = "Flux vs time", xtitle = "t", ytitle = "Flux")
-gd2 = gdots()
+flux_graph = graph(title = "Flux vs time", xtitle = "t", ytitle = "Flux", scroll=True, xmin = 0, xmax = xmax)
+gc2 = gcurve()
+
+back_emf_graph = graph(title = "Back-Emf vs time", xtitle = "t", ytitle = "Back-EMF", scroll=True, xmin = 0, xmax = xmax)
+gc3 = gcurve()
 
 
 while t < 1000:
-    t += dt
-    rate (1 / dt)
+
+    rate (1/dt)
     
-    V_back = abs(B*A*omega*sin(theta))
-    print(f"{V_back:.4f}")
+    flux = B*A*cos(theta)
+
+#    print(f"V_back: {V_back:.4f}")
+#    print(f"omega: {omega:.4f}")
+#    print(f"B: {B:.4f}")
+#    print(f"A: {A:.4f}")
+#    print(f"sin(theta): {sin(theta):.4f}")
     
-    L /= 100
-    r /= 100
-    
+    V_back = loops * B*A*omega*abs(sin(theta))
     i_loop = i_wire - V_back / R
-    print(f"i loop: {i_loop:.4f}")
-    F_B = abs(i_loop * B * L * cos(theta))
+    F_B = i_loop * B * L * abs(cos(theta))
+#    print(f"i loop: {i_loop:.4f}")
+
+    domega_dt_1 = (r*F_B) / I
     
-    domega_dt = (r*F_B) / I
+    
+    omega_mid = omega + (dt / 2) * d_omega_dt_1
+    t += dt / 2
+    
+    domega_dt_2 = 
+    
+    
     omega += domega_dt * dt
+    
+    
     theta += omega * dt
+    theta %= 2 * pi
+    
+    t += dt / 2
     
     
-    update_arrows(path, lf, rf)
+    
+#    print(f"theta: {theta}")
+    
+    
+#    update_arrows(path, lf, rf)
     
 #    print(f"Omega*dt: {omega*dt}")
-    print(f"omega: {omega:.4f}")
     RPM_graph.select()
-    gd1.plot(t, omega * 60 / (2*pi))
+    gc1.plot(t, omega * 60 / (2*pi))
     
     flux_graph.select()
-    gd2.plot(t, B*A*cos(theta))
+    gc2.plot(t, flux)
+    
+    back_emf_graph.select()
+    gc3.plot(t, V_back)
 
 
     arrow(axis = rotation_axis)
     
     
-
-    for i in range(len(path)):
-        path[i] = rotate(path[i], axis=rotation_axis, angle=omega*dt)
-        
-    wire.visible = False
-    wire = curve(pos=path, radius = 0.1, color=bronze)
-    wire.visible = True
+    
+    wire.rotate(axis=rotation_axis, angle=omega*dt)
+#    for i in range(len(path)):
+#        path[i] = rotate(path[i], axis=rotation_axis, angle=omega*dt)
+#        
+#    wire.visible = False
+#    wire = curve(pos=path, radius = 0.1, color=bronze)
+#    wire.visible = True
     
     
-    update_arrows(path, lf, rf)
+#    update_arrows(path, lf, rf)
     
     commutators.rotate(axis=rotation_axis, angle = omega*dt)
     
-    L *= 100
-    r *= 100
     
+    
+
