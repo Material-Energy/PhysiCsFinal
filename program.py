@@ -9,7 +9,7 @@ L = 0.02 # height of loop (m)
 r = 0.025 # radius of loop (m)
 I = 1e-4 # moment of inertia of the armature
 
-num_loops = 10
+num_loops = 4
 num_turns = 5
 offset = pi / num_loops
 angles = [offset * i for i in range(num_loops)] # how much to rotate each loop from first loop
@@ -57,6 +57,9 @@ def calc_domega_dt(omega, theta):
         if (min(a3, a4) <= theta <= max(a3, a4)):
             i_dir = -1
             break
+        
+        if (i == num_loops - 1):
+            i_dir = 0
         
     phi += angles[i] # angle betweeen normal and B
     
@@ -136,7 +139,7 @@ center = wire.point(0)['pos'] - vec(wire.point(0)['pos'].x, 0, 0)
 
 commutator_segments = []
 dtheta = 2 * pi / total_segments
-gap = pi/36
+gap = pi/9
 
 for i in range(total_segments):
     start = i * dtheta
@@ -205,7 +208,7 @@ while t < 1000:
     
 #    update_arrows(path, lf, rf)
     
-#    print(f"Omega*dt: {omega*dt}")
+#    print(f"Omega*dt: {omega_mid*dt}")
 
 #    print(f"V_back: {V_back:.4f}")
 #    print(f"omega: {omega:.4f}")
@@ -218,15 +221,15 @@ while t < 1000:
 
     RPM_graph.select()
     gc1.plot(t, omega * 60 / (2*pi))
-    
-    flux_graph.select()
-    gc2.plot(t, flux)
 #    
-    back_emf_graph.select()
-    gc3.plot(t, V_back)
-    
-    torque_graph.select()
-    gc4.plot(t, torque)
+#    flux_graph.select()
+#    gc2.plot(t, flux)
+##    
+#    back_emf_graph.select()
+#    gc3.plot(t, V_back)
+#    
+#    torque_graph.select()
+#    gc4.plot(t, torque)
 
 
     
