@@ -17,8 +17,8 @@ L = 0.02 # height of loop (m)
 r = 0.025 # radius of loop (m)
 
 
-num_loops = 4
-num_turns = 1
+num_loops = 8
+num_turns = 50
 offset = pi / num_loops
 angles = [offset * i for i in range(num_loops)] # how much to rotate each loop from first loop
 total_segments = 2 * num_loops # total commutator segments
@@ -43,23 +43,24 @@ init = True
 # sliders
 def update_sliders(evt):
     global I, B, V, R
+    global init_slider_text
     
     if evt.id == "I":
         I = round(evt.value)
-        slider_text[0].text = f"Rotational Inertia: 10<sup>{I}</sup> <i>kg&middot;m<sup>2</sup></i>\n\n"
+        slider_text[0].text = init_slider_text[0].format(I)
         I = 10 ** I
 
     elif evt.id == "B":
-        B = round(evt.value)
-        slider_text[1].text = f"Magnetic Field: {B} <i>T</i> \n\n"
+        B = round(4*evt.value) / 4
+        slider_text[1].text = init_slider_text[1].format(B)
        
     elif evt.id == "V":
-        V = round(evt.value)
-        slider_text[2].text = f"Source Voltage: {V} <i>V</i> \n\n"
+        V = round(2*evt.value) / 2
+        slider_text[2].text = init_slider_text[2].format(V)
         
     elif evt.id == "R":
         R =round(evt.value)
-        slider_text[3].text = f"Equivalent Resistance: {R} <i>&Omega;</i> \n\n"
+        slider_text[3].text = init_slider_text[3].format(R)
     
 
 
@@ -75,13 +76,11 @@ def toggle_run(evt):
     if running:
         run_button.text = "Run"
         run_button.background = color.green
-        for s in sliders: s.disabled = False
         
     else:
         run_button.text = "Pause"
         run_button.background = color.red
         for s in sliders: s.disabled = True
-        
 
     running = not running
         
@@ -109,22 +108,25 @@ def calc_domega_dt(omega, theta):
 #    print(commutator_angles)
     phi = pi/2 - theta
     
+    in_gap = False
+    
     for i in range(num_loops):
         a1, a2 = commutator_angles[i]
         a3, a4 = commutator_angles[i + num_loops]
         
-        
-        if (min(a1, a2) <= theta <= max(a1, a2)):
-            break
-        if (min(a3, a4) <= theta <= max(a3, a4)):
-            i_dir = -1
+        if (min(a1, a2) <= theta <= max(a1, a2) or min(a3, a4) <= theta <= max(a3, a4)):
             break
         
         if (i == num_loops - 1):
-            i_dir = 0
+            in_gap = True
         
-    phi += angles[i] # angle betweeen normal and B
+        
+    phi += angles[i] # angle betweeen normal and B 
     
+    if sin(phi) > 0:
+        i_dir = 1
+    elif sin(phi) < 0:
+        i_dir = -1
     
 #    print(f"Using loop {i}")
 #    print(f"theta: {theta}")
@@ -133,8 +135,9 @@ def calc_domega_dt(omega, theta):
     V_back = num_turns * B * A * omega * sin(phi)
 
     i_loop = (i_dir * V - V_back) / R
+    if in_gap: i_loop = 0
         
-    F_B = i_loop * B * L * sin(phi) # Lorentz force on EACH turn
+    F_B = i_loop * B * L * sin(phi) # Lorentz force on EACH turn        
     
 
     torque = num_turns * 2*r*F_B
@@ -143,7 +146,7 @@ def calc_domega_dt(omega, theta):
     
     flux = B * A * cos(phi)
     
-    return domega_dt, [V_back, i_loop, F_B, flux, torque]
+    return domega_dt, V_back, i_loop, F_B, flux, torque
     
     
 def update_arrows(path):
@@ -188,20 +191,32 @@ def reset(evt):
     global init
     global running
     
+    global init_slider_text
+    
+    
+    theta = 0
+    omega = 0
+    t = 0
+    
+    
+    init_constants = [
+        -4.0, # 10 raised to this number is the moment of inertia of each loop
+        0.25, # magnitude of magnetic field from external magnets
+        3.0, # source voltage
+        3.0 # resistance of wire
+    ]
+    
+    I = 10 ** init_constants[0]
+    B = init_constants[1]
+    V = init_constants[2]
+    R = init_constants[3]
     
     
     init_slider_text = [
-        "Rotational Inertia: 10<sup>-5</sup> <i>kg&middot;m<sup>2</sup></i>\n\n",
-        "Magnetic Field: 1.0 <i>T</i> \n\n",
-        "Source Voltage: 5 <i>V</i> \n\n",
-        "Equivalent Resistance: 1 <i>&Omega;</i> \n\n"
-    ]
-    
-    init_constants = [
-        -5.0, # 10 raised to this number is the moment of inertia of each loop
-        1.0, # magnitude of mangetic field from external magnets
-        5.0, # source voltage
-        1.0 # resistance of wire
+        "Rotational Inertia: 10<sup>{}</sup> <i>kg&middot;m<sup>2</sup></i>\n\n",
+        "Magnetic Field: {} <i>T</i> \n\n",
+        "Source Voltage: {} <i>V</i> \n\n",
+        "Equivalent Resistance: {} <i>&Omega;</i> \n\n"
     ]
     
     
@@ -210,19 +225,19 @@ def reset(evt):
         
         
         I_slider = slider(bind=update_sliders, min=-7, max=0, value=init_constants[0], id = "I", align="left")
-        I_text = wtext(text = init_slider_text[0])
+        I_text = wtext(text = init_slider_text[0].format(init_constants[0]))
     
             
-        B_slider = slider(bind=update_sliders, min=0, max=10, value=init_constants[1], id = "B", align="left")
-        B_text = wtext(text = init_slider_text[1])
-  
+        B_slider = slider(bind=update_sliders, min=0, max=1, value=init_constants[1], id = "B", align="left")
+        B_text = wtext(text = init_slider_text[1].format(init_constants[1]))
+
         
         V_slider = slider(bind=update_sliders, min=0, max=10, value=init_constants[2], id = "V", align="left")
-        V_text = wtext(text = init_slider_text[2])
+        V_text = wtext(text = init_slider_text[2].format(init_constants[2]))
     
          
         R_slider = slider(bind=update_sliders, min=1, max=100, value=init_constants[3], id = "R", align="left")
-        R_text = wtext(text = init_slider_text[3])
+        R_text = wtext(text = init_slider_text[3].format(init_constants[3]))
    
    
         sliders = [I_slider, B_slider, V_slider, R_slider]
@@ -258,10 +273,12 @@ def reset(evt):
         
         running = True
         toggle_run(evt)
+        
+        for s in sliders: s.disabled = False
     
         for i in range(len(sliders)):
             sliders[i].value = init_constants[i]
-            slider_text[i].text = init_slider_text[i]
+            slider_text[i].text = init_slider_text[i].format(init_constants[i])
 #            
         for obj in loops:
             obj.visible = False
@@ -280,14 +297,7 @@ def reset(evt):
         for c in gcs: c.delete()
         
             
-    theta = 0
-    omega = 0
-    t = 0
-    
-    I = 10 ** init_constants[0]
-    B = init_constants[1]
-    V = init_constants[2]
-    R = init_constants[3]
+
     
 
     # armature
@@ -345,17 +355,19 @@ def reset(evt):
     
     RPM_graph = graph(title = "RPM vs time", xtitle = "t", ytitle = "RPM", scroll=True, xmin = 0, xmax = xmax, width=480, height=360, align="left")
     gc1 = gcurve()
+
     
-    flux_graph = graph(title = "Flux vs time", xtitle = "t", ytitle = "Flux", scroll=True, xmin = 0, xmax = xmax, width=480, height=360)
+    current_graph = graph(title = "Current in Loop vs time", xtitle = "t", ytitle = "Current", scroll=True, xmin = 0, xmax = xmax, width=480, height=360, align="left")
     gc2 = gcurve()
     
-    back_emf_graph = graph(title = "Back-Emf vs time", xtitle = "t", ytitle = "Back-EMF", scroll=True, xmin = 0, xmax = xmax, width=480, height=360)
+    
+    back_emf_graph = graph(title = "Back-Emf vs time", xtitle = "t", ytitle = "Back-EMF", scroll=True, xmin = 0, xmax = xmax, width=480, height=360, align="left")
     gc3 = gcurve()
     
-    torque_graph = graph(title = "Torque vs time", xtitle = "t", ytitle = "Torque", scroll=True, xmin = 0, xmax = xmax, width=480, height=360)
+    torque_graph = graph(title = "Torque vs time", xtitle = "t", ytitle = "Torque", scroll=True, xmin = 0, xmax = xmax, width=480, height=360, align="left")
     gc4 = gcurve()
     
-    graphs = [RPM_graph, flux_graph, back_emf_graph, torque_graph]
+    graphs = [RPM_graph, current_graph, back_emf_graph, torque_graph]
     gcs = [gc1, gc2, gc3, gc4]
     
 
@@ -391,7 +403,7 @@ while True:
         t += dt
         
         # update graphed values
-        _, graphed_values = calc_domega_dt(omega, theta)
+        _, V_back, i_loop, F_B, flux, torque = calc_domega_dt(omega, theta)
     #    print(f"theta: {theta}")
         
         
@@ -411,14 +423,14 @@ while True:
         graphs[0].select()
         gcs[0].plot(t, omega * 60 / (2*pi))
     #    
-    #    flux_graph.select()
-    #    gc2.plot(t, flux)
-    ##    
-    #    back_emf_graph.select()
-    #    gc3.plot(t, V_back)
-    #    
-    #    torque_graph.select()
-    #    gc4.plot(t, torque)
+        graphs[1].select()
+        gcs[1].plot(t, i_loop)
+        
+        graphs[2].select()
+        gcs[2].plot(t, V_back)
+        
+        graphs[3].select()
+        gcs[3].plot(t, torque)
     
     
         
