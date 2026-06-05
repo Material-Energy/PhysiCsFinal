@@ -33,8 +33,9 @@ xmax = 3.0
 
 running = False
 init = True
+
 slowmo = False
-slowmo_factor = 100
+slowmo_factor = 50
 
 
 # sliders
@@ -71,11 +72,6 @@ def update_sliders(evt):
     
 
 
-
-
-
-
-
 # Run / Pause
 def toggle_run(evt):
     global sliders, running
@@ -97,6 +93,24 @@ run_button = button(bind=toggle_run, text="Run", background=color.green, pos=sce
 
 # Reset
 reset_button = button(bind=reset, text="Reset", background=color.red, pos=scene.title_anchor)
+
+# toggle slowmo
+
+def toggle_slowmo(evt):
+    global slowmo
+    
+    if slowmo:
+        slowmo_button.text = "<b>Slowmo</b>"
+        slowmo_button.color = color.blue
+    else:
+        slowmo_button.text = "<b>Normal</b>"
+        slowmo_button.color = color.cyan
+        
+    slowmo = not slowmo
+        
+slowmo_button = button(bind = toggle_slowmo, color = color.blue, background=color.white, text = "<b>Slowmo</b>", pos=scene.title_anchor)
+
+
 
 rotation_axis = vec(0,0,-1).rotate(angle = -3 * pi/4, axis=vec(1, 0, 0))
 arrow(axis = rotation_axis)
@@ -155,8 +169,9 @@ def calc_domega_dt(omega, theta):
     flux = B * A * cos(phi)
     
     return domega_dt, V_back, i_loop, F_B, flux, torque
-    
-    
+
+
+
 def update_arrows(path):
     global lf, rf
     
@@ -318,7 +333,7 @@ def reset(evt):
     global graphs, gcs
     
     global init
-    global running
+    global running, slowmo
     
     global init_slider_text
     global path
@@ -410,6 +425,8 @@ def reset(evt):
         
         running = True
         toggle_run(evt)
+        slowmo = True
+        toggle_slowmo(evt)
         
         for s in sliders: s.disabled = False
     
@@ -456,25 +473,26 @@ A = 2 * r * L
 
 while True:
 #    print(t, omega, theta)
-    rate (1/dt)
+    rate(1/dt)
     
     if (running):
-        if (slowmo): dt /= slowmo_factor
+        if (slowmo): dt_eff = dt / slowmo_factor
+        else: dt_eff = dt
             
         domega_dt_i, _ = calc_domega_dt(omega, theta)
         
-        theta_mid = theta + omega * (dt / 2)
-        omega_mid = omega + domega_dt_i * (dt / 2)
+        theta_mid = theta + omega * (dt_eff / 2)
+        omega_mid = omega + domega_dt_i * (dt_eff / 2)
         
         domega_dt_mid, _ = calc_domega_dt(omega_mid, theta_mid)
         
         
-        theta += omega_mid * dt
-        omega += domega_dt_mid * dt
+        theta += omega_mid * dt_eff
+        omega += domega_dt_mid * dt_eff
         
-        t += dt
+        t += dt_eff
         
-        if (slowmo): dt *= slowmo_factor
+#        
         
         
         # update graphed values
@@ -499,21 +517,21 @@ while True:
         graphs[0].select()
         gcs[0].plot(t, omega * 60 / (2*pi))
         
-        graphs[1].select()
-        gcs[1].plot(t, i_loop)
-        
-        graphs[2].select()
-        gcs[2].plot(t, V_back)
-        
-        graphs[3].select()
-        gcs[3].plot(t, torque)
+#        graphs[1].select()
+#        gcs[1].plot(t, i_loop)
+#        
+#        graphs[2].select()
+#        gcs[2].plot(t, V_back)
+#        
+#        graphs[3].select()
+#        gcs[3].plot(t, torque)
     
     
         
         
         
         for wire in loops:
-            wire.rotate(axis=rotation_axis, angle=omega_mid*dt)
+            wire.rotate(axis=rotation_axis, angle=omega_mid*dt_eff)
     #    for i in range(len(path)):
     #        path[i] = rotate(path[i], axis=rotation_axis, angle=omega*dt)
     #        
@@ -524,7 +542,8 @@ while True:
         
     #    update_arrows(path, lf, rf)
         
-        commutator.rotate(axis=rotation_axis, angle = omega_mid*dt)
+        commutator.rotate(axis=rotation_axis, angle = omega_mid*dt_eff)
+
         
     
     
