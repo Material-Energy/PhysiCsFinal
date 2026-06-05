@@ -1,6 +1,6 @@
 Web VPython 3.2
 
-scene = canvas(width=800, height=600, align="left", background = color.gray(0.9), resizable = False)
+scene = canvas(width=700, height=500, align="left", background = color.gray(0.9), resizable = False)
 scene.forward = vec(0, -1, 1)
 
 init_camera = [
@@ -18,9 +18,7 @@ r = 0.025 # radius of loop (m)
 
 num_loops = 8
 num_turns = 50
-offset = pi / num_loops
-angles = [offset * i for i in range(num_loops)] # how much to rotate each loop from first loop
-total_segments = 2 * num_loops # total commutator segments
+
 
 # vectors
 B_vec = vec(1, 0, 0)
@@ -33,15 +31,15 @@ dt = 1/60
 xmax = 3.0
 
 
-commutator_angles = []
-
 running = False
 init = True
+slowmo = False
+slowmo_factor = 100
 
 
 # sliders
 def update_sliders(evt):
-    global I, B, V, R
+    global I, B, V, R, num_loops, num_turns
     global init_slider_text
     
     if evt.id == "I":
@@ -58,8 +56,18 @@ def update_sliders(evt):
         slider_text[2].text = init_slider_text[2].format(V)
         
     elif evt.id == "R":
-        R =round(evt.value)
+        R = round(evt.value)
         slider_text[3].text = init_slider_text[3].format(R)
+        
+    elif evt.id == "L":
+        num_loops = round(evt.value)
+        slider_text[4].text = init_slider_text[4].format(num_loops)
+        delete_moving_objs()
+        create_moving_objs()
+        
+    elif evt.id == "T":
+        num_turns = round(evt.value)
+        slider_text[5].text = init_slider_text[5].format(num_turns)
     
 
 
@@ -177,6 +185,57 @@ width = 2 * 100*r
 height = 100*L
 copper = vec(0.961, 0.686, 0.373)
 
+def create_moving_objs():
+    global path, loops, commutator, commutator_segments
+    global commutator_angles, angles
+    
+    
+    offset = pi / num_loops
+    total_segments = 2 * num_loops # total commutator segments
+
+    commutator_angles = []
+    angles = [offset * i for i in range(num_loops)] # how much to rotate each loop from first loop
+    
+    
+    loops = []
+    
+    for i in range(num_loops):
+        loops.append(make_loop(path, angles[i]))
+        
+
+    #print(wire.slice(0, wire.npoint)[0])
+    #print(wire.point(0)['pos'])
+    
+    # commutators
+    wire = loops[0] # make sure first loop always has angle = 0 in make_loop
+    center = wire.point(1)['pos'] - vec(wire.point(1)['pos'].x, 0, 0)
+    
+    commutator_segments = []
+    dtheta = 2 * pi / total_segments
+    gap = pi/4 / total_segments
+    
+    for i in range(total_segments):
+        start = i * dtheta
+        
+        angle1 = start - (dtheta-gap) / 2
+        angle2 = start + (dtheta-gap) / 2
+        
+        arc = paths.arc(pos=center, radius = width/4 + 0.1, angle1=angle1+pi, angle2=angle2+pi)
+        segment = extrusion(shape=shapes.rectangle(width=0.1, height=2), path=arc, color=copper)
+        
+        commutator_segments.append(segment)
+        
+    #    angle1 += 2*pi; angle1 %= (2*pi)
+    #    angle2 += 2*pi; angle2 %= (2*pi)
+        
+        commutator_angles.append((angle1, angle2))
+    
+    delta = height / sqrt(2)
+    center += vec(0, -delta, delta)
+    sphere(pos=center, radius=0.1)
+    commutator = compound(commutator_segments)
+    commutator.rotate(axis=vector(1, 0, 0), angle = 3*pi/4)
+
 def create_static_objs():
     global stator_parts, stator, center
     global path
@@ -231,13 +290,26 @@ def create_static_objs():
     neg_term = box(pos=(circuit[2] + circuit[3]) / 2 - vec(-1, 0, 0), length = 2, width = 1, height= 1, color = color.red).rotate(axis=vector(1, 0, 0), angle=-3*pi/4)
     battery = [pos_term, neg_term]
 
+def delete_moving_objs():
+    global loops, commutator_segments, commutator
     
+    for obj in loops:
+        obj.visible = False
+        del obj
     
+    for obj in commutator_segments:
+        obj.visible = False
+        del obj
+        
+    commutator.visible = False
+    del commutator
+   
 
 
 def reset(evt):
     global sliders, slider_text
     global I, B, V, R
+    global num_loops, num_turns
     global t, theta, omega
     
     global loops, commutator_segments, stator_parts
@@ -261,20 +333,26 @@ def reset(evt):
         -4.0, # 10 raised to this number is the moment of inertia of each loop
         0.25, # magnitude of magnetic field from external magnets
         3.0, # source voltage
-        3.0 # resistance of wire
+        3.0, # resistance of wire
+        8, # number of loops
+        50, # number of turns
     ]
     
     I = 10 ** init_constants[0]
     B = init_constants[1]
     V = init_constants[2]
     R = init_constants[3]
+    num_loops = init_constants[4]
+    num_turns = init_constants[5]
     
     
     init_slider_text = [
         "Rotational Inertia: 10<sup>{}</sup> <i>kg&middot;m<sup>2</sup></i>\n\n",
         "Magnetic Field: {} <i>T</i> \n\n",
         "Source Voltage: {} <i>V</i> \n\n",
-        "Equivalent Resistance: {} <i>&Omega;</i> \n\n"
+        "Equivalent Resistance: {} <i>&Omega;</i> \n\n",
+        "Number of Loops: {}\n\n",
+        "Number of Turns: {}\n\n"
     ]
     
     
@@ -295,27 +373,33 @@ def reset(evt):
         init = False
         
         
-        I_slider = slider(bind=update_sliders, min=-7, max=0, value=init_constants[0], id = "I", align="left")
+        I_slider = slider(bind=update_sliders, min=-7, max=0, value=init_constants[0], id = "I", align="left", length = 350)
         I_text = wtext(text = init_slider_text[0].format(init_constants[0]))
     
             
-        B_slider = slider(bind=update_sliders, min=0, max=1, value=init_constants[1], id = "B", align="left")
+        B_slider = slider(bind=update_sliders, min=0, max=1, value=init_constants[1], id = "B", align="left", length = 350)
         B_text = wtext(text = init_slider_text[1].format(init_constants[1]))
 
         
-        V_slider = slider(bind=update_sliders, min=0, max=10, value=init_constants[2], id = "V", align="left")
+        V_slider = slider(bind=update_sliders, min=0, max=10, value=init_constants[2], id = "V", align="left", length = 350)
         V_text = wtext(text = init_slider_text[2].format(init_constants[2]))
     
          
-        R_slider = slider(bind=update_sliders, min=1, max=100, value=init_constants[3], id = "R", align="left")
+        R_slider = slider(bind=update_sliders, min=1, max=100, value=init_constants[3], id = "R", align="left", length = 350)
         R_text = wtext(text = init_slider_text[3].format(init_constants[3]))
+        
+        loops_slider = slider(bind=update_sliders, min=1, max=10, value=init_constants[4], id = "L", align="left", length = 350)
+        loops_text = wtext(text = init_slider_text[4].format(init_constants[4]))
+        
+        turns_slider = slider(bind=update_sliders, min=1, max=100, value=init_constants[5], id = "T", align="left", length = 350)
+        turns_text = wtext(text = init_slider_text[5].format(init_constants[5]))
    
    
-        sliders = [I_slider, B_slider, V_slider, R_slider]
-        slider_text = [I_text, B_text, V_text, R_text]
+        sliders = [I_slider, B_slider, V_slider, R_slider, loops_slider, turns_slider]
+        slider_text = [I_text, B_text, V_text, R_text, loops_text, turns_text]
         
         
-        scene.append_to_caption("\n" * 30)
+        scene.append_to_caption("\n" * 25)
         create_static_objs()
         
     else:
@@ -332,64 +416,14 @@ def reset(evt):
         for i in range(len(sliders)):
             sliders[i].value = init_constants[i]
             slider_text[i].text = init_slider_text[i].format(init_constants[i])
-#            
-        for obj in loops:
-            obj.visible = False
-            del obj
-        
-#        print(commutator_segments)
-        
-        for obj in commutator_segments:
-            obj.visible = False
-            del obj
-            
-        commutator.visible = False
-        del commutator
+#       
+        delete_moving_objs()
  
         for g in graphs: g.delete()
         for c in gcs: c.delete()
-        
-    
-    loops = []
-    
-    for i in range(num_loops):
-        loops.append(make_loop(path, angles[i]))
-        
-
-    #print(wire.slice(0, wire.npoint)[0])
-    #print(wire.point(0)['pos'])
-    
-    # commutators
-    wire = loops[0] # make sure first loop always has angle = 0 in make_loop
-    center = wire.point(1)['pos'] - vec(wire.point(1)['pos'].x, 0, 0)
-    
-    commutator_segments = []
-    dtheta = 2 * pi / total_segments
-    gap = pi/4 / total_segments
-    
-    for i in range(total_segments):
-        start = i * dtheta
-        
-        angle1 = start - (dtheta-gap) / 2
-        angle2 = start + (dtheta-gap) / 2
-        
-        arc = paths.arc(pos=center, radius = width/4 + 0.1, angle1=angle1+pi, angle2=angle2+pi)
-        segment = extrusion(shape=shapes.rectangle(width=0.1, height=2), path=arc, color=copper)
-        
-        commutator_segments.append(segment)
-        
-    #    angle1 += 2*pi; angle1 %= (2*pi)
-    #    angle2 += 2*pi; angle2 %= (2*pi)
-        
-        commutator_angles.append((angle1, angle2))
-    
-    delta = height / sqrt(2)
-    center += vec(0, -delta, delta)
-    sphere(pos=center, radius=0.1)
-    commutator = compound(commutator_segments)
-    commutator.rotate(axis=vector(1, 0, 0), angle = 3*pi/4)
     
     
+    create_moving_objs()
     
     RPM_graph = graph(title = "RPM vs time", xtitle = "t", ytitle = "RPM", scroll=True, xmin = 0, xmax = xmax, width=480, height=360, align="left")
     gc1 = gcurve()
@@ -420,13 +454,13 @@ reset(None)
 # physics stuff
 A = 2 * r * L
 
-
 while True:
 #    print(t, omega, theta)
     rate (1/dt)
     
     if (running):
-          
+        if (slowmo): dt /= slowmo_factor
+            
         domega_dt_i, _ = calc_domega_dt(omega, theta)
         
         theta_mid = theta + omega * (dt / 2)
@@ -440,8 +474,12 @@ while True:
         
         t += dt
         
+        if (slowmo): dt *= slowmo_factor
+        
+        
         # update graphed values
         _, V_back, i_loop, F_B, flux, torque = calc_domega_dt(omega, theta)
+        theta %= (2*pi)
     #    print(f"theta: {theta}")
         
         
@@ -460,7 +498,7 @@ while True:
     
         graphs[0].select()
         gcs[0].plot(t, omega * 60 / (2*pi))
-    #    
+        
         graphs[1].select()
         gcs[1].plot(t, i_loop)
         
