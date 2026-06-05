@@ -1,6 +1,5 @@
 Web VPython 3.2
 
-
 scene = canvas(width=800, height=600, align="left", background = color.gray(0.9), resizable = False)
 scene.forward = vec(0, -1, 1)
 
@@ -95,9 +94,10 @@ rotation_axis = vec(0,0,-1).rotate(angle = -3 * pi/4, axis=vec(1, 0, 0))
 arrow(axis = rotation_axis)
 
 def make_loop(path, angle):
+    test = path[:]
+    test.insert(0, path[0] + rotation_axis)
     
-    
-    wire = curve(pos=path, radius = 0.1, color=copper)
+    wire = curve(pos=test, radius = 0.1, color=copper if angle != 3 * pi / 4 else color.white)
     wire.rotate(axis=rotation_axis, angle = angle)
 
     return wire
@@ -177,6 +177,63 @@ width = 2 * 100*r
 height = 100*L
 copper = vec(0.961, 0.686, 0.373)
 
+def create_static_objs():
+    global stator_parts, stator, center
+    global path
+    stator_parts = []
+    colors = [color.blue, color.red]
+    
+    for i in range(2):
+        start = i * pi
+        
+        arc = paths.arc(pos=center, radius = width/2 + width/8, angle1=start-pi/3, angle2=start+pi/3)
+        magnet = extrusion(shape=shapes.rectangle(width=0.2, height=3), path=arc, color=colors[i])
+        
+        arc = paths.arc(pos=center, radius = width/2 + width/8 + 0.2, angle1=start-pi/3, angle2=start+pi/3)
+        out = extrusion(shape=shapes.rectangle(width=0.2, height=3), path=arc, color=color.gray(0.7))
+        
+        stator_parts += [magnet, out]
+    
+    
+    stator = compound(stator_parts)
+    stator.rotate(axis=vector(1, 0, 0), angle = 3*pi/4)
+    
+    sqrt_2 = sqrt(2)
+    # brushes
+    brushes = []
+    s = 0.4
+    delta = s/2 + 0.1
+    brush = box(pos = path[0] + vec(delta, 0, 0) + vec(0, height / 10, -height / 10), length = s, height = s, width = s)
+    brush.rotate(axis=vector(1, 0, 0), angle=-3*pi/4)
+    connector = box(pos = path[0] + vec(delta + 3 * s / 2, 0, 0) + vec(0, height / 10, -height / 10), length = 2 * s, height = s * 1.5, width = s * 1.5, color = copper)
+    connector.rotate(axis=vector(1, 0, 0), angle=-3*pi/4)
+    brushes.append(brush)
+    brushes.append(connector)
+    brush = box(pos = path[-1] - vec(delta, 0, 0) + vec(0, height / 10, -height / 10), length = s, height = s, width = s)
+    brush.rotate(axis=vector(1, 0, 0), angle=-3*pi/4)
+    connector = box(pos = path[-1] - vec(delta + 3 * s / 2, 0, 0) + vec(0, height / 10, -height / 10), length = 2 * s, height = s * 1.5, width = s * 1.5, color = copper)
+    connector.rotate(axis=vector(1, 0, 0), angle=-3*pi/4)
+    brushes.append(brush)
+    brushes.append(connector)
+    
+    
+    circuit = [vec(width / 2 * 0.87, height * 1.15 / sqrt_2, -height * 1.15 / sqrt_2), vec(-width / 2 * 0.87, height * 1.15 / sqrt_2, -height * 1.15 / sqrt_2)]
+    circuit.insert(1, circuit[0] + vec(width / 2, 0, 0))
+    circuit.insert(2, circuit[1] + vec(0, 4 / sqrt_2, -4 / sqrt_2))
+    circuit.insert(3, circuit[-1] + vec(-width / 2, 4 / sqrt_2, -4 / sqrt_2))
+    circuit.insert(4, circuit[-1] + vec(-width / 2, 0, 0))
+    
+    curve(pos=circuit, radius = 0.1, color=copper)
+#    .rotate(axis=rotation_axis, angle = 3*pi/4)
+    # wire
+    
+    pos_term = box(pos=(circuit[2] + circuit[3]) / 2 + vec(-1, 0, 0), length = 2, width = 1, height= 1, color = color.red).rotate(axis=vector(1, 0, 0), angle=-3*pi/4)
+    neg_term = box(pos=(circuit[2] + circuit[3]) / 2 - vec(-1, 0, 0), length = 2, width = 1, height= 1, color = color.blue).rotate(axis=vector(1, 0, 0), angle=-3*pi/4)
+    battery = [pos_term, neg_term]
+
+    
+    
+
 
 def reset(evt):
     global sliders, slider_text
@@ -192,6 +249,7 @@ def reset(evt):
     global running
     
     global init_slider_text
+    global path
     
     
     theta = 0
@@ -220,6 +278,19 @@ def reset(evt):
     ]
     
     
+    # armature
+    path = paths.rectangle(width=width, height = height)
+    #print(path)
+    path.insert(0, path[0]+vec(-width/4, 0, 0))
+    path[-1] = path[-2] + vec(width/4, 0, 0)
+    
+    path.insert(0, path[0]+vec(0, 0, height/2))
+    path.append(path[-1]+vec(0, 0, height/2))
+    
+    for i in range(len(path)):
+        path[i] = rotate(path[i], axis=vector(1, 0, 0), angle=-3*pi/4)
+    
+    
     if init:
         init = False
         
@@ -245,26 +316,8 @@ def reset(evt):
         
         
         scene.append_to_caption("\n" * 30)
+        create_static_objs()
         
-        stator_parts = []
-        colors = [color.blue, color.red]
-        
-        for i in range(2):
-            start = i * pi
-            
-            arc = paths.arc(pos=center, radius = width/2 + width/8, angle1=start-pi/3, angle2=start+pi/3)
-            magnet = extrusion(shape=shapes.rectangle(width=0.2, height=3), path=arc, color=colors[i])
-            
-            arc = paths.arc(pos=center, radius = width/2 + width/8 + 0.2, angle1=start-pi/3, angle2=start+pi/3)
-            out = extrusion(shape=shapes.rectangle(width=0.2, height=3), path=arc, color=color.gray(0.7))
-            
-            stator_parts += [magnet, out]
-        
-        
-        stator = compound(stator_parts)
-        stator.rotate(axis=vector(1, 0, 0), angle = 3*pi/4)
-        
-    
     else:
         scene.camera.pos = init_camera[0]
         scene.camera.axis = init_camera[1]
@@ -296,21 +349,6 @@ def reset(evt):
         for g in graphs: g.delete()
         for c in gcs: c.delete()
         
-            
-
-    
-
-    # armature
-    path = paths.rectangle(width=width, height = height)
-    #print(path)
-    path.insert(0, path[0]+vec(-width/4, 0, 0))
-    path[-1] = path[-2] + vec(width/4, 0, 0)
-    
-    path.insert(0, path[0]+vec(0, 0, height/2))
-    path.append(path[-1]+vec(0, 0, height/2))
-    
-    for i in range(len(path)):
-        path[i] = rotate(path[i], axis=vector(1, 0, 0), angle=-3*pi/4)
     
     loops = []
     
@@ -323,7 +361,7 @@ def reset(evt):
     
     # commutators
     wire = loops[0] # make sure first loop always has angle = 0 in make_loop
-    center = wire.point(0)['pos'] - vec(wire.point(0)['pos'].x, 0, 0)
+    center = wire.point(1)['pos'] - vec(wire.point(1)['pos'].x, 0, 0)
     
     commutator_segments = []
     dtheta = 2 * pi / total_segments
@@ -371,7 +409,7 @@ def reset(evt):
     gcs = [gc1, gc2, gc3, gc4]
     
 
-    
+
 
 
 
