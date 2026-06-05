@@ -97,7 +97,7 @@ def make_loop(path, angle):
     test = path[:]
     test.insert(0, path[0] + rotation_axis)
     
-    wire = curve(pos=test, radius = 0.1, color=copper if angle != 3 * pi / 4 else color.white)
+    wire = curve(pos=test, radius = 0.1, color=copper if angle != 0 else color.white)
     wire.rotate(axis=rotation_axis, angle = angle)
 
     return wire
@@ -227,8 +227,8 @@ def create_static_objs():
 #    .rotate(axis=rotation_axis, angle = 3*pi/4)
     # wire
     
-    pos_term = box(pos=(circuit[2] + circuit[3]) / 2 + vec(-1, 0, 0), length = 2, width = 1, height= 1, color = color.red).rotate(axis=vector(1, 0, 0), angle=-3*pi/4)
-    neg_term = box(pos=(circuit[2] + circuit[3]) / 2 - vec(-1, 0, 0), length = 2, width = 1, height= 1, color = color.blue).rotate(axis=vector(1, 0, 0), angle=-3*pi/4)
+    pos_term = box(pos=(circuit[2] + circuit[3]) / 2 + vec(-1, 0, 0), length = 2, width = 1, height= 1, color = color.blue).rotate(axis=vector(1, 0, 0), angle=-3*pi/4)
+    neg_term = box(pos=(circuit[2] + circuit[3]) / 2 - vec(-1, 0, 0), length = 2, width = 1, height= 1, color = color.red).rotate(axis=vector(1, 0, 0), angle=-3*pi/4)
     battery = [pos_term, neg_term]
 
     
