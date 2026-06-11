@@ -51,6 +51,8 @@ def update_sliders(evt):
     elif evt.id == "B":
         B = round(4*evt.value) / 4
         slider_text[1].text = init_slider_text[1].format(B)
+        
+        update_B_arrow()
        
     elif evt.id == "V":
         V = round(2*evt.value) / 2
@@ -116,13 +118,26 @@ rotation_axis = vec(0,0,-1).rotate(angle = -3 * pi/4, axis=vec(1, 0, 0))
 arrow(axis = rotation_axis)
 
 def make_loop(path, angle):
-    test = path[:]
-    test.insert(0, path[0] + rotation_axis)
+    tmp = path[:]
+    tmp.insert(0, path[0] + rotation_axis)
     
-    wire = curve(pos=test, radius = 0.1, color=copper if angle != 0 else color.white)
+    wire = curve(pos=tmp, radius = 0.1, color=copper if angle != 0 else color.white)
     wire.rotate(axis=rotation_axis, angle = angle)
 
     return wire
+
+def get_current_loop():
+    for i in range(num_loops):
+        a1, a2 = commutator_angles[i]
+        a3, a4 = commutator_angles[i + num_loops]
+#        print(str(a1) + " <= " + theta + " <= " + str(a2))
+#        print(str(a3) + " <= " + theta + " <= " + str(a4))
+        
+        if (min(a1, a2) <= theta <= max(a1, a2) or min(a3, a4) <= theta <= max(a3, a4) or min(a1, a2) <= theta - 2 * pi <= max(a1, a2)):
+            return i
+        
+        if (i == num_loops - 1):
+            return -1
 
 def calc_domega_dt(omega, theta):
     i_dir = 1
@@ -130,20 +145,10 @@ def calc_domega_dt(omega, theta):
 #    print(commutator_angles)
     phi = pi/2 - theta
     
-    in_gap = False
     
-    for i in range(num_loops):
-        a1, a2 = commutator_angles[i]
-        a3, a4 = commutator_angles[i + num_loops]
+    loop_index = get_current_loop()    
         
-        if (min(a1, a2) <= theta <= max(a1, a2) or min(a3, a4) <= theta <= max(a3, a4)):
-            break
-        
-        if (i == num_loops - 1):
-            in_gap = True
-        
-        
-    phi += angles[i] # angle betweeen normal and B 
+    phi += angles[loop_index] if not loop_index == -1 else 0 # angle betweeen normal and B 
     
     if sin(phi) > 0:
         i_dir = 1
@@ -157,7 +162,7 @@ def calc_domega_dt(omega, theta):
     V_back = num_turns * B * A * omega * sin(phi)
 
     i_loop = (i_dir * V - V_back) / R
-    if in_gap: i_loop = 0
+    if loop_index == -1: i_loop = 0
         
     F_B = i_loop * B * L * sin(phi) # Lorentz force on EACH turn        
     
@@ -172,25 +177,28 @@ def calc_domega_dt(omega, theta):
 
 
 
-def update_arrows(path):
+def update_arrows(path, theta):
     global lf, rf
+    path = path[1:]
     
     lf.visible = False
     rf.visible = False
     
     
     L_vec = path[3]-path[2]
+    print(L_vec)
+    print(vec(B_vec))
     arrow(axis=L_vec)
     arrow(axis=B_vec)
 #    arrow(axis = cross(L_vec, B_vec))
     
     
     midpoint = (path[2] + path[3]) / 2
-    lf = arrow(pos=midpoint, axis = 2 * norm(cross(L_vec, B_vec)), shaftwidth=0.1)
+    lf = arrow(pos=midpoint.rotate(axis = rotation_axis, angle = theta), axis = B * 1.5 * norm(cross(L_vec, B_vec)), shaftwidth=0.1)
     
     midpoint = (path[4] + path[5]) / 2
     L_vec = path[5] - path[4]
-    rf = arrow(pos=midpoint, axis = 2 * norm(cross(L_vec, B_vec)), shaftwidth=0.1)
+    rf = arrow(pos=midpoint.rotate(axis = rotation_axis, angle = theta), axis = B * 1.5 * norm(cross(L_vec, B_vec)), shaftwidth=0.1)
     
     lf.visible = True
     rf.visible = True
@@ -203,6 +211,7 @@ copper = vec(0.961, 0.686, 0.373)
 def create_moving_objs():
     global path, loops, commutator, commutator_segments
     global commutator_angles, angles
+    global polarity_objs, polarity_dia
     
     
     offset = pi / num_loops
@@ -250,6 +259,25 @@ def create_moving_objs():
     sphere(pos=center, radius=0.1)
     commutator = compound(commutator_segments)
     commutator.rotate(axis=vector(1, 0, 0), angle = 3*pi/4)
+    
+    polarity_objs = []
+    north = box(pos=vec(0, 0.15, 0) ,length=width-0.4, width=height-0.4, height=0.3, color=color.red)
+    south = box(pos=vec(0, -0.15, 0) ,length=width-0.4, width=height-0.4, height=0.3, color=color.blue)
+    polarity_objs.append(north)
+    polarity_objs.append(south)
+    
+    polarity_dia = compound(polarity_objs)
+    polarity_dia.rotate(axis=vector(1, 0, 0), angle = -3*pi/4)
+
+def update_B_arrow():
+    global B_vec, B_arrow1, B_arrow2
+
+    B_length = 3 * B
+    B_vec = vec(B, 0, 0)
+    if B_arrow1: B_arrow1.visible = False
+    B_arrow1 = arrow(pos = vec(-1.5 * B, width / 3, width / 3), axis = B_length * vec(1, 0, 0), color = color.black)
+    if B_arrow2: B_arrow2.visible = False
+    B_arrow2 = arrow(pos = vec(-1.5 * B, -width / 3, -width / 3), axis = B_length * vec(1, 0, 0), color = color.black)
 
 def create_static_objs():
     global stator_parts, stator, center
@@ -267,6 +295,8 @@ def create_static_objs():
         out = extrusion(shape=shapes.rectangle(width=0.2, height=3), path=arc, color=color.gray(0.7))
         
         stator_parts += [magnet, out]
+    
+    update_B_arrow()
     
     
     stator = compound(stator_parts)
@@ -318,6 +348,9 @@ def delete_moving_objs():
         
     commutator.visible = False
     del commutator
+    
+    polarity_dia.visible = False
+    del polarity_dia
    
 
 
@@ -438,6 +471,9 @@ def reset(evt):
  
         for g in graphs: g.delete()
         for c in gcs: c.delete()
+        
+        lf.visible = False
+        rf.visible = False
     
     
     create_moving_objs()
@@ -470,6 +506,8 @@ reset(None)
 
 # physics stuff
 A = 2 * r * L
+
+polarity_rotation = 0
 
 while True:
 #    print(t, omega, theta)
@@ -525,6 +563,9 @@ while True:
 #        
 #        graphs[3].select()
 #        gcs[3].plot(t, torque)
+        
+        
+        
     
     
         
@@ -532,15 +573,24 @@ while True:
         
         for wire in loops:
             wire.rotate(axis=rotation_axis, angle=omega_mid*dt_eff)
-    #    for i in range(len(path)):
-    #        path[i] = rotate(path[i], axis=rotation_axis, angle=omega*dt)
     #        
     #    wire.visible = False
     #    wire = curve(pos=path, radius = 0.1, color=bronze)
     #    wire.visible = True
         
-        
-    #    update_arrows(path, lf, rf)
+        cur_path = get_current_loop()
+        if cur_path != -1:
+            loop_arrow = [loops[cur_path].point(x)['pos'] for x in range(loops[cur_path].npoints)]
+            delta = (theta + commutator_angles[0][1]) % pi - angles[cur_path] - commutator_angles[0][1]
+            update_arrows(loop_arrow, delta)
+            
+            polarity_dia.visible = True
+            polarity_dia.rotate(axis=rotation_axis, angle=delta - polarity_rotation)
+            polarity_rotation = delta
+        else:
+            lf.visible = False
+            rf.visible = False
+            polarity_dia.visible = False
         
         commutator.rotate(axis=rotation_axis, angle = omega_mid*dt_eff)
 
