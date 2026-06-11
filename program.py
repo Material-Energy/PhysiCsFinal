@@ -186,8 +186,8 @@ def update_arrows(path, theta):
     
     
     L_vec = path[3]-path[2]
-    print(L_vec)
-    print(vec(B_vec))
+#    print(L_vec)
+#    print(vec(B_vec))
     arrow(axis=L_vec)
     arrow(axis=B_vec)
 #    arrow(axis = cross(L_vec, B_vec))
@@ -211,7 +211,6 @@ copper = vec(0.961, 0.686, 0.373)
 def create_moving_objs():
     global path, loops, commutator, commutator_segments
     global commutator_angles, angles
-    global polarity_objs, polarity_dia
     
     
     offset = pi / num_loops
@@ -259,15 +258,6 @@ def create_moving_objs():
     sphere(pos=center, radius=0.1)
     commutator = compound(commutator_segments)
     commutator.rotate(axis=vector(1, 0, 0), angle = 3*pi/4)
-    
-    polarity_objs = []
-    north = box(pos=vec(0, 0.15, 0) ,length=width-0.4, width=height-0.4, height=0.3, color=color.red)
-    south = box(pos=vec(0, -0.15, 0) ,length=width-0.4, width=height-0.4, height=0.3, color=color.blue)
-    polarity_objs.append(north)
-    polarity_objs.append(south)
-    
-    polarity_dia = compound(polarity_objs)
-    polarity_dia.rotate(axis=vector(1, 0, 0), angle = -3*pi/4)
 
 def update_B_arrow():
     global B_vec, B_arrow1, B_arrow2
@@ -336,22 +326,18 @@ def create_static_objs():
     battery = [pos_term, neg_term]
 
 def delete_moving_objs():
-    global loops, commutator_segments, commutator
+    global loops, commutator, polarity_dia
     
     for obj in loops:
         obj.visible = False
         del obj
     
-    for obj in commutator_segments:
-        obj.visible = False
-        del obj
-        
     commutator.visible = False
     del commutator
     
-    polarity_dia.visible = False
-    del polarity_dia
-   
+    if polarity_dia:
+        polarity_dia.visible = False
+        del polarity_dia
 
 
 def reset(evt):
@@ -501,13 +487,12 @@ def reset(evt):
 
 
 
-
+init = True
 reset(None)
+init = False
 
 # physics stuff
 A = 2 * r * L
-
-polarity_rotation = 0
 
 while True:
 #    print(t, omega, theta)
@@ -584,9 +569,18 @@ while True:
             delta = (theta + commutator_angles[0][1]) % pi - angles[cur_path] - commutator_angles[0][1]
             update_arrows(loop_arrow, delta)
             
-            polarity_dia.visible = True
-            polarity_dia.rotate(axis=rotation_axis, angle=delta - polarity_rotation)
-            polarity_rotation = delta
+            if polarity_dia:
+                polarity_dia.visible = False
+                del polarity_dia
+            polarity_objs = []
+            north = box(pos=vec(0, 0.15, 0) ,length=width-0.4, width=height-0.4, height=0.3, color=color.red)
+            south = box(pos=vec(0, -0.15, 0) ,length=width-0.4, width=height-0.4, height=0.3, color=color.blue)
+            polarity_objs.append(north)
+            polarity_objs.append(south)
+            
+            polarity_dia = compound(polarity_objs)
+            polarity_dia.rotate(axis=vector(1, 0, 0), angle = -3*pi/4)
+            polarity_dia.rotate(axis=rotation_axis, angle=delta)
         else:
             lf.visible = False
             rf.visible = False
