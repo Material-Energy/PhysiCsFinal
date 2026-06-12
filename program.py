@@ -64,7 +64,7 @@ def update_sliders(evt):
         slider_text[2].text = init_slider_text[2].format(V)
         
     elif evt.id == "R":
-        R = round(evt.value)
+        R = round(10*evt.value) / 10
         slider_text[3].text = init_slider_text[3].format(R)
         
     elif evt.id == "L":
@@ -195,7 +195,7 @@ def calc_domega_dt(omega, theta):
     
     V_back = num_turns * B * A * omega * sin(phi)
 
-    i_loop = (i_dir * V - V_back) / R
+    i_loop = (i_dir * V - V_back) / (num_turns * R)
     if loop_index == -1: i_loop = 0
         
     F_B = i_loop * B * L * sin(phi) # Lorentz force on EACH turn        
@@ -203,13 +203,15 @@ def calc_domega_dt(omega, theta):
 
     torque = num_turns * 2*r*F_B
     
+    sign_torque = 1 if torque >= 0 else -1
+    
     if omega == 0:
         if (abs(torque) >= load_torque):
-            torque -= load_torque * sign(torque)
+            torque -= load_torque * sign_torque
         else:
             torque = 0
     else:
-        torque -= load_torque * sign(torque)
+        torque -= load_torque * sign_torque
         
     
     domega_dt = torque / I
@@ -409,11 +411,11 @@ def reset(evt):
     init_constants = [
         -4.0, # 10 raised to this number is the moment of inertia of each loop
         0.25, # magnitude of magnetic field from external magnets
-        3.0, # source voltage
-        3.0, # resistance of wire
+        5.0, # source voltage
+        0.1, # resistance of wire
         8, # number of loops
         50, # number of turns
-        -3, # load torque
+        0, # load torque
     ]
     
     I = 10 ** init_constants[0]
@@ -422,14 +424,14 @@ def reset(evt):
     R = init_constants[3]
     num_loops = init_constants[4]
     num_turns = init_constants[5]
-    load_torque = 10 ** init_constants[6]
+    load_torque = init_constants[6]
     
     
     init_slider_text = [
         "Rotational Inertia: 10<sup>{}</sup> <i>kg&middot;m<sup>2</sup></i>\n\n",
         "Magnetic Field: {} <i>T</i> \n\n",
         "Source Voltage: {} <i>V</i> \n\n",
-        "Equivalent Resistance: {} <i>&Omega;</i> \n\n",
+        "Resistance per Turn: {} <i>&Omega;</i> \n\n",
         "Number of Loops: {}\n\n",
         "Number of Turns: {}\n\n",
         "Load Torque: 10<sup>{}</sup> <i>Nm</i>\n\n"
@@ -453,7 +455,7 @@ def reset(evt):
         init = False
         
         
-        I_slider = slider(bind=update_sliders, min=-7, max=0, value=init_constants[0], id = "I", align="left", length = 350)
+        I_slider = slider(bind=update_sliders, min=-5, max=0, value=init_constants[0], id = "I", align="left", length = 350)
         I_text = wtext(text = init_slider_text[0].format(init_constants[0]))
     
             
@@ -465,7 +467,7 @@ def reset(evt):
         V_text = wtext(text = init_slider_text[2].format(init_constants[2]))
     
          
-        R_slider = slider(bind=update_sliders, min=1, max=100, value=init_constants[3], id = "R", align="left", length = 350)
+        R_slider = slider(bind=update_sliders, min=0.1, max=3, value=init_constants[3], id = "R", align="left", length = 350)
         R_text = wtext(text = init_slider_text[3].format(init_constants[3]))
         
         loops_slider = slider(bind=update_sliders, min=1, max=10, value=init_constants[4], id = "L", align="left", length = 350)
@@ -474,8 +476,8 @@ def reset(evt):
         turns_slider = slider(bind=update_sliders, min=1, max=100, value=init_constants[5], id = "T", align="left", length = 350)
         turns_text = wtext(text = init_slider_text[5].format(init_constants[5]))
         
-        load_torque_slider = slider(bind=update_sliders, min=-5, max=-1, value=init_constants[6], id = "LT", align="left", length = 350)
-        load_torque_text = wtext(text = init_slider_text[6].format(init_constants[6]))
+        load_torque_slider = slider(bind=update_sliders, min=-5, max=-1, value=-5, id = "LT", align="left", length = 350)
+        load_torque_text = wtext(text = "Load Torque: 0 <i>Nm</i>\n\n")
         
         
         init_toggles()
@@ -502,8 +504,14 @@ def reset(evt):
         for s in sliders: s.disabled = False
     
         for i in range(len(sliders)):
-            sliders[i].value = init_constants[i]
-            slider_text[i].text = init_slider_text[i].format(init_constants[i])
+            
+            if i == len(sliders) - 1: 
+                sliders[i].value = -5
+                slider_text[i].text = "Load Torque: 0 <i>Nm</i>\n\n"
+            else: 
+                sliders[i].value = init_constants[i]
+                slider_text[i].text = init_slider_text[i].format(init_constants[i])
+            
         
         for tog in toggles: tog.checked = True
 

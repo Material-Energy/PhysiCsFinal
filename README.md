@@ -9,7 +9,7 @@
 - Rotational inertia slider changes the rotational inertia of each loop of wire.
 - The magnetic field slider adjusts the magnitude of the magnetic field produced by the external magnets.
 - The source voltage slider controls the amount of voltage produced by the voltage source. 
-- The equivalent resistance slider changes the total resistance in the wire + armature loop circuit.    
+- The resistance per turn slider changes the resistance in EACH turn of an armature loop. This means that the  total resistance of the armature depends on the number of turns.  
 - The number of loops slider controls the number of coils in the armature.
 - The second-to-last slider adjusts the number of turns in each armature coil/loop.
 - The last slider changes the magnitude of the load torque on the motor.
