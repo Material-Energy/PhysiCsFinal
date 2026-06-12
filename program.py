@@ -102,7 +102,7 @@ def update_toggles(evt):
 def init_toggles():
     global toggles
     lorentz_toggle = checkbox(bind=update_toggles, id="lorentz", text="Lorentz Force\n", name="i", checked=lorentz_visible)
-    B_toggle = checkbox(bind=update_toggles, id="magnetic", text="Magnetic Force\n", name="love", checked=magnetic_visible)
+    B_toggle = checkbox(bind=update_toggles, id="magnetic", text="Magnetic Field\n", name="love", checked=magnetic_visible)
     polarity_toggle = checkbox(bind=update_toggles, id="polarity", text="Magnetic Polarity", name="yuri", checked=polarity_visible)
 
     toggles = [lorentz_toggle, B_toggle, polarity_toggle]
