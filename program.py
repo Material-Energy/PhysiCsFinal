@@ -44,7 +44,7 @@ polarity_visible = True
 
 # sliders
 def update_sliders(evt):
-    global I, B, V, R, num_loops, num_turns
+    global I, B, V, R, num_loops, num_turns, load_torque
     global init_slider_text
     
     if evt.id == "I":
@@ -75,6 +75,11 @@ def update_sliders(evt):
     elif evt.id == "T":
         num_turns = round(evt.value)
         slider_text[5].text = init_slider_text[5].format(num_turns)
+        
+    elif evt.id == "LT":
+        load_torque = round(evt.value)
+        slider_text[6].text = init_slider_text[6].format(load_torque)
+        load_torque = 10 ** load_torque
     
 def update_toggles(evt):
     global lorentz_visible, magnetic_visible, polarity_visible
@@ -188,6 +193,18 @@ def calc_domega_dt(omega, theta):
     
 
     torque = num_turns * 2*r*F_B
+    
+    if (omega > 0.1):
+        torque -= load_torque * sign(torque)
+            
+    else:
+        if (abs(torque) > load_torque):
+            torque -= load_torque * sign(torque)
+        else:
+            omega = 0
+            torque = 0
+        
+        
     
     domega_dt = torque / I
     
@@ -363,7 +380,7 @@ def delete_moving_objs():
 
 def reset(evt):
     global sliders, slider_text
-    global I, B, V, R
+    global I, B, V, R, load_torque
     global num_loops, num_turns
     global t, theta, omega
     
@@ -390,6 +407,7 @@ def reset(evt):
         3.0, # resistance of wire
         8, # number of loops
         50, # number of turns
+        -3, # load torque
     ]
     
     I = 10 ** init_constants[0]
@@ -398,6 +416,7 @@ def reset(evt):
     R = init_constants[3]
     num_loops = init_constants[4]
     num_turns = init_constants[5]
+    load_torque = 10 ** init_constants[6]
     
     
     init_slider_text = [
@@ -406,7 +425,8 @@ def reset(evt):
         "Source Voltage: {} <i>V</i> \n\n",
         "Equivalent Resistance: {} <i>&Omega;</i> \n\n",
         "Number of Loops: {}\n\n",
-        "Number of Turns: {}\n\n"
+        "Number of Turns: {}\n\n",
+        "Load Torque: 10<sup>{}</sup> <i>Nm</i>\n\n"
     ]
     
     
@@ -448,15 +468,18 @@ def reset(evt):
         turns_slider = slider(bind=update_sliders, min=1, max=100, value=init_constants[5], id = "T", align="left", length = 350)
         turns_text = wtext(text = init_slider_text[5].format(init_constants[5]))
         
+        load_torque_slider = slider(bind=update_sliders, min=-4, max=-1, value=init_constants[6], id = "LT", align="left", length = 350)
+        load_torque_text = wtext(text = init_slider_text[6].format(init_constants[6]))
+        
         
         init_toggles()
    
    
-        sliders = [I_slider, B_slider, V_slider, R_slider, loops_slider, turns_slider]
-        slider_text = [I_text, B_text, V_text, R_text, loops_text, turns_text]
+        sliders = [I_slider, B_slider, V_slider, R_slider, loops_slider, turns_slider, load_torque_slider]
+        slider_text = [I_text, B_text, V_text, R_text, loops_text, turns_text, load_torque_text]
         
         
-        scene.append_to_caption("\n" * 25)
+        scene.append_to_caption("\n" * 20)
         create_static_objs()
         
     else:
@@ -470,11 +493,12 @@ def reset(evt):
         slowmo = True
         toggle_slowmo(evt)
         
-        for s in sliders: s.disabled = False
+        for s in sliders[:-1]: s.disabled = False
     
         for i in range(len(sliders)):
             sliders[i].value = init_constants[i]
             slider_text[i].text = init_slider_text[i].format(init_constants[i])
+            
 #       
         delete_moving_objs()
  
@@ -498,7 +522,7 @@ def reset(evt):
     back_emf_graph = graph(title = "Back-Emf vs time", xtitle = "t", ytitle = "Back-EMF", scroll=True, xmin = 0, xmax = xmax, width=480, height=360, align="left")
     gc3 = gcurve()
     
-    torque_graph = graph(title = "Torque vs time", xtitle = "t", ytitle = "Torque", scroll=True, xmin = 0, xmax = xmax, width=480, height=360, align="left")
+    torque_graph = graph(title = "Net Torque vs time", xtitle = "t", ytitle = "Torque", scroll=True, xmin = 0, xmax = xmax, width=480, height=360, align="left")
     gc4 = gcurve()
     
     graphs = [RPM_graph, current_graph, back_emf_graph, torque_graph]

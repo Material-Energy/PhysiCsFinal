@@ -11,16 +11,31 @@
 - The source voltage slider controls the amount of voltage produced by the voltage source. 
 - The equivalent resistance slider changes the total resistance in the wire + armature loop circuit.
 - The number of loops slider controls the number of coils in the armature.
-- The last slider adjusts the number of turns in each armature coil/loop.
+- The second-to-last slider adjusts the number of turns in each armature coil/loop.
+- The last slider changes the magnitude of the load torque on the motor.
 
 
 ## Toggles
 The following motor simulation elements can be toggled on/off in the UI:
-- The magnetic field from external magnets (two black arrows on the top and bottom)
+- The magnetic field from external magnets (two purple arrows on the top and bottom)
 - The electromagnet pole indicators (red/blue rectangles inside loop)
-- The Lorentz force acting on the current loop (two [color] arrows protruding out the left and right ends of the loop)
+- The Lorentz force acting on the current loop (two black arrows protruding out the left and right ends of the loop)
 
 ## Physics
 The motor's angular velocity is determined by a differential equation derived from $\tau = I\frac{d\omega}{dt}$. The torque on an armature loop is determined by angle and angular velocity-dependent quantities such as the back EMF and Lorentz force. Thus, we used the 2nd order Runge-Kutta method to approximate the motor's motion.
 
-At each timestep $t$, we first computed $\frac{d\omega}{dt}$ from the current motor state $(\theta, \omega)$. Then, $\omega$ and $\frac{d\omega}{dt}$ were used to update $\theta$ and $\omega$ over half a timestep ($\Delta t / 2$). The angular acceleration is then recomputed at this midpoint state ($\theta_{mid}, \omega_{mid}$), and the resulting value is used to update both $\omega$ and $\theta$ over the full timestep. 
+At each timestep $t$, we first computed $\frac{d\omega}{dt}$ from the current motor state $(\theta, \omega)$. Then, $\omega$ and $\frac{d\omega}{dt}$ were used to update $\theta$ and $\omega$ over half a timestep ($\Delta t / 2$). The angular acceleration is then recomputed at this midpoint state ($\theta_{mid}, \omega_{mid}$), and the resulting value is used to update both $\omega$ and $\theta$ over the full timestep.
+
+## Graphs
+- Motor RPM vs time
+- The current in the loop vs time
+- The back-emf vs time
+- The net torque produced by the motor vs time
+
+
+
+
+TODO: 
+- Fix Load torque
+- Reset doesn't reset B vector size
+- Figure out slider bounds that don't break program.
