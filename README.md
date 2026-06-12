@@ -2,14 +2,14 @@
 
 ## User Controls
 - The run button is the green button called "Run" in the top left corner. If you press the run button, the text will become "Pause" and the button will turn red. Then, you can press the button again to pause.
-- To the right of the Run button is the reset button, which resets the simulation and the parameters to their initial state.
-- To the right of the reset button is the slowmo button, which toggles running the simulation in slowmo (50x slower).
+- To the right of the Run button is the reset button, which resets the simulation, parameters, and toggles to their initial state.
+- To the right of the reset button is the slowmo button, which toggles running the simulation in slowmo. This slows down the simulation by a factor of the RPS unless the RPS < 1, in which case slowmo does nothing.
 
 ## Parameters
 - Rotational inertia slider changes the rotational inertia of each loop of wire.
 - The magnetic field slider adjusts the magnitude of the magnetic field produced by the external magnets.
 - The source voltage slider controls the amount of voltage produced by the voltage source. 
-- The equivalent resistance slider changes the total resistance in the wire + armature loop circuit.
+- The equivalent resistance slider changes the total resistance in the wire + armature loop circuit.    
 - The number of loops slider controls the number of coils in the armature.
 - The second-to-last slider adjusts the number of turns in each armature coil/loop.
 - The last slider changes the magnitude of the load torque on the motor.

@@ -35,7 +35,8 @@ running = False
 init = True
 
 slowmo = False
-slowmo_factor = 50
+slowmo_factor = 1
+plot_counter = 0
 
 lorentz_visible = True
 magnetic_visible = True
@@ -78,8 +79,13 @@ def update_sliders(evt):
         
     elif evt.id == "LT":
         load_torque = round(evt.value)
-        slider_text[6].text = init_slider_text[6].format(load_torque)
-        load_torque = 10 ** load_torque
+        if load_torque == -5: 
+            load_torque = 0
+            slider_text[6].text = "Load Torque: 0 <i>Nm</i>\n\n"
+            
+        else:
+            slider_text[6].text = init_slider_text[6].format(load_torque)
+            load_torque = 10 ** load_torque
     
 def update_toggles(evt):
     global lorentz_visible, magnetic_visible, polarity_visible
@@ -94,9 +100,12 @@ def update_toggles(evt):
     
 
 def init_toggles():
-    checkbox(bind=update_toggles, id="lorentz", text="Lorentz Force\n", name="i", checked=lorentz_visible)
-    checkbox(bind=update_toggles, id="magnetic", text="Magnetic Force\n", name="love", checked=magnetic_visible)
-    checkbox(bind=update_toggles, id="polarity", text="Magnetic Polarity", name="yuri", checked=polarity_visible)
+    global toggles
+    lorentz_toggle = checkbox(bind=update_toggles, id="lorentz", text="Lorentz Force\n", name="i", checked=lorentz_visible)
+    B_toggle = checkbox(bind=update_toggles, id="magnetic", text="Magnetic Force\n", name="love", checked=magnetic_visible)
+    polarity_toggle = checkbox(bind=update_toggles, id="polarity", text="Magnetic Polarity", name="yuri", checked=polarity_visible)
+
+    toggles = [lorentz_toggle, B_toggle, polarity_toggle]
     
 
 # Run / Pause
@@ -110,7 +119,7 @@ def toggle_run(evt):
     else:
         run_button.text = "Pause"
         run_button.background = color.red
-        for s in sliders: s.disabled = True
+        for s in sliders[:-1]: s.disabled = True
 
     running = not running
         
@@ -194,16 +203,13 @@ def calc_domega_dt(omega, theta):
 
     torque = num_turns * 2*r*F_B
     
-    if (omega > 0.1):
-        torque -= load_torque * sign(torque)
-            
-    else:
-        if (abs(torque) > load_torque):
+    if omega == 0:
+        if (abs(torque) >= load_torque):
             torque -= load_torque * sign(torque)
         else:
-            omega = 0
             torque = 0
-        
+    else:
+        torque -= load_torque * sign(torque)
         
     
     domega_dt = torque / I
@@ -379,7 +385,7 @@ def delete_moving_objs():
 
 
 def reset(evt):
-    global sliders, slider_text
+    global sliders, slider_text, toggles
     global I, B, V, R, load_torque
     global num_loops, num_turns
     global t, theta, omega
@@ -468,7 +474,7 @@ def reset(evt):
         turns_slider = slider(bind=update_sliders, min=1, max=100, value=init_constants[5], id = "T", align="left", length = 350)
         turns_text = wtext(text = init_slider_text[5].format(init_constants[5]))
         
-        load_torque_slider = slider(bind=update_sliders, min=-4, max=-1, value=init_constants[6], id = "LT", align="left", length = 350)
+        load_torque_slider = slider(bind=update_sliders, min=-5, max=-1, value=init_constants[6], id = "LT", align="left", length = 350)
         load_torque_text = wtext(text = init_slider_text[6].format(init_constants[6]))
         
         
@@ -493,13 +499,15 @@ def reset(evt):
         slowmo = True
         toggle_slowmo(evt)
         
-        for s in sliders[:-1]: s.disabled = False
+        for s in sliders: s.disabled = False
     
         for i in range(len(sliders)):
             sliders[i].value = init_constants[i]
             slider_text[i].text = init_slider_text[i].format(init_constants[i])
-            
-#       
+        
+        for tog in toggles: tog.checked = True
+
+        update_B_arrow()
         delete_moving_objs()
  
         for g in graphs: g.delete()
@@ -546,9 +554,12 @@ while True:
     rate(1/dt)
     
     if (running):
-        if (slowmo): dt_eff = dt / slowmo_factor
+        if (slowmo): 
+            slowmo_factor = max(omega / (2*pi), 1) # RPM / 60
+            dt_eff = dt / slowmo_factor
         else: dt_eff = dt
-            
+        
+        omega_old = omega
         domega_dt_i, _ = calc_domega_dt(omega, theta)
         
         theta_mid = theta + omega * (dt_eff / 2)
@@ -561,6 +572,8 @@ while True:
         omega += domega_dt_mid * dt_eff
         
         t += dt_eff
+        
+        if (omega_old * omega < 0): omega = 0 # detect sign flip, prevent overshoot
         
 #        
         
@@ -582,19 +595,24 @@ while True:
     #    print(f"sin(theta): {sin(theta):.4f}")
     #    print(f"i loop: {i_loop:.4f}")
     
-    
-    
-        graphs[0].select()
-        gcs[0].plot(t, omega * 60 / (2*pi))
-        
-        graphs[1].select()
-        gcs[1].plot(t, i_loop)
-        
-        graphs[2].select()
-        gcs[2].plot(t, V_back)
-        
-        graphs[3].select()
-        gcs[3].plot(t, torque)
+        if slowmo:
+            plot_counter += 1
+        else:
+            plot_counter = 0
+      
+        if plot_counter % int(slowmo_factor) == 0:
+             
+            graphs[0].select()
+            gcs[0].plot(t, omega * 60 / (2*pi))
+            
+            graphs[1].select()
+            gcs[1].plot(t, i_loop)
+            
+            graphs[2].select()
+            gcs[2].plot(t, V_back)
+            
+            graphs[3].select()
+            gcs[3].plot(t, torque)
         
         
         
