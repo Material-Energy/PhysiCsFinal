@@ -37,6 +37,10 @@ init = True
 slowmo = False
 slowmo_factor = 50
 
+lorentz_visible = True
+magnetic_visible = True
+polarity_visible = True
+
 
 # sliders
 def update_sliders(evt):
@@ -72,7 +76,23 @@ def update_sliders(evt):
         num_turns = round(evt.value)
         slider_text[5].text = init_slider_text[5].format(num_turns)
     
+def update_toggles(evt):
+    global lorentz_visible, magnetic_visible, polarity_visible
+    if evt.id is "lorentz":
+        lorentz_visible = evt.checked
+    elif evt.id is "magnetic":
+        magnetic_visible = evt.checked
+        update_B_arrow()
+    elif evt.id is "polarity":
+        polarity_visible = evt.checked
 
+    
+
+def init_toggles():
+    checkbox(bind=update_toggles, id="lorentz", text="Lorentz Force\n", name="i", checked=lorentz_visible)
+    checkbox(bind=update_toggles, id="magnetic", text="Magnetic Force\n", name="love", checked=magnetic_visible)
+    checkbox(bind=update_toggles, id="polarity", text="Magnetic Polarity", name="yuri", checked=polarity_visible)
+    
 
 # Run / Pause
 def toggle_run(evt):
@@ -188,17 +208,18 @@ def update_arrows(path, theta):
     L_vec = path[3]-path[2]
 #    print(L_vec)
 #    print(vec(B_vec))
-    arrow(axis=L_vec)
-    arrow(axis=B_vec)
 #    arrow(axis = cross(L_vec, B_vec))
+    magnitude = abs(B * i_loop * 2)
+    if magnitude < 0.0125: magnitude = 0
+    magnitude = min(sqrt(magnitude), 4)
     
     
     midpoint = (path[2] + path[3]) / 2
-    lf = arrow(pos=midpoint.rotate(axis = rotation_axis, angle = theta), axis = B * 1.5 * norm(cross(L_vec, B_vec)), shaftwidth=0.1)
+    lf = arrow(pos=midpoint.rotate(axis = rotation_axis, angle = theta), axis = magnitude * norm(cross(L_vec, B_vec)), shaftwidth=0.1, color=color.black)
     
     midpoint = (path[4] + path[5]) / 2
     L_vec = path[5] - path[4]
-    rf = arrow(pos=midpoint.rotate(axis = rotation_axis, angle = theta), axis = B * 1.5 * norm(cross(L_vec, B_vec)), shaftwidth=0.1)
+    rf = arrow(pos=midpoint.rotate(axis = rotation_axis, angle = theta), axis = magnitude * norm(cross(L_vec, B_vec)), shaftwidth=0.1, color=color.black)
     
     lf.visible = True
     rf.visible = True
@@ -265,9 +286,9 @@ def update_B_arrow():
     B_length = 3 * B
     B_vec = vec(B, 0, 0)
     if B_arrow1: B_arrow1.visible = False
-    B_arrow1 = arrow(pos = vec(-1.5 * B, width / 3, width / 3), axis = B_length * vec(1, 0, 0), color = color.black)
+    if magnetic_visible: B_arrow1 = arrow(pos = vec(-1.5 * B, width / 3, width / 3), axis = B_length * vec(1, 0, 0), color = color.purple)
     if B_arrow2: B_arrow2.visible = False
-    B_arrow2 = arrow(pos = vec(-1.5 * B, -width / 3, -width / 3), axis = B_length * vec(1, 0, 0), color = color.black)
+    if magnetic_visible: B_arrow2 = arrow(pos = vec(-1.5 * B, -width / 3, -width / 3), axis = B_length * vec(1, 0, 0), color = color.purple)
 
 def create_static_objs():
     global stator_parts, stator, center
@@ -357,7 +378,6 @@ def reset(evt):
     global init_slider_text
     global path
     
-    
     theta = 0
     omega = 0
     t = 0
@@ -427,6 +447,9 @@ def reset(evt):
         
         turns_slider = slider(bind=update_sliders, min=1, max=100, value=init_constants[5], id = "T", align="left", length = 350)
         turns_text = wtext(text = init_slider_text[5].format(init_constants[5]))
+        
+        
+        init_toggles()
    
    
         sliders = [I_slider, B_slider, V_slider, R_slider, loops_slider, turns_slider]
@@ -540,14 +563,14 @@ while True:
         graphs[0].select()
         gcs[0].plot(t, omega * 60 / (2*pi))
         
-#        graphs[1].select()
-#        gcs[1].plot(t, i_loop)
-#        
-#        graphs[2].select()
-#        gcs[2].plot(t, V_back)
-#        
-#        graphs[3].select()
-#        gcs[3].plot(t, torque)
+        graphs[1].select()
+        gcs[1].plot(t, i_loop)
+        
+        graphs[2].select()
+        gcs[2].plot(t, V_back)
+        
+        graphs[3].select()
+        gcs[3].plot(t, torque)
         
         
         
@@ -565,26 +588,41 @@ while True:
         
         cur_path = get_current_loop()
         if cur_path != -1:
-            loop_arrow = [loops[cur_path].point(x)['pos'] for x in range(loops[cur_path].npoints)]
             delta = (theta + commutator_angles[0][1]) % pi - angles[cur_path] - commutator_angles[0][1]
-            update_arrows(loop_arrow, delta)
+            if lorentz_visible:
+                loop_arrow = [loops[cur_path].point(x)['pos'] for x in range(loops[cur_path].npoints)]
+                update_arrows(loop_arrow, delta)
+            else:
+                if lf:
+                    lf.visible = False
+                if rf:
+                    rf.visible = False
             
+            
+            if polarity_visible:            
+                if polarity_dia:
+                    polarity_dia.visible = False
+                    del polarity_dia
+                polarity_objs = []
+                north = box(pos=vec(0, 0.15, 0) ,length=width-0.4, width=height-0.4, height=0.3, color=color.red)
+                south = box(pos=vec(0, -0.15, 0) ,length=width-0.4, width=height-0.4, height=0.3, color=color.blue)
+                polarity_objs.append(north)
+                polarity_objs.append(south)
+                
+                polarity_dia = compound(polarity_objs)
+                polarity_dia.rotate(axis=vector(1, 0, 0), angle = -3*pi/4)
+                polarity_dia.rotate(axis=rotation_axis, angle=delta)
+            else:
+                if polarity_dia:
+                    polarity_dia.visible = False
+                    del polarity_dia
+        else:
+            if lf:
+                lf.visible = False
+            if rf:
+                rf.visible = False
             if polarity_dia:
                 polarity_dia.visible = False
-                del polarity_dia
-            polarity_objs = []
-            north = box(pos=vec(0, 0.15, 0) ,length=width-0.4, width=height-0.4, height=0.3, color=color.red)
-            south = box(pos=vec(0, -0.15, 0) ,length=width-0.4, width=height-0.4, height=0.3, color=color.blue)
-            polarity_objs.append(north)
-            polarity_objs.append(south)
-            
-            polarity_dia = compound(polarity_objs)
-            polarity_dia.rotate(axis=vector(1, 0, 0), angle = -3*pi/4)
-            polarity_dia.rotate(axis=rotation_axis, angle=delta)
-        else:
-            lf.visible = False
-            rf.visible = False
-            polarity_dia.visible = False
         
         commutator.rotate(axis=rotation_axis, angle = omega_mid*dt_eff)
 
