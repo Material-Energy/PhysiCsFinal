@@ -38,9 +38,9 @@ slowmo = False
 slowmo_factor = 1
 plot_counter = 0
 
-lorentz_visible = True
-magnetic_visible = True
-polarity_visible = True
+lorentz_visible = False
+magnetic_visible = False
+polarity_visible = False
 
 
 # sliders
@@ -149,7 +149,6 @@ slowmo_button = button(bind = toggle_slowmo, color = color.blue, background=colo
 
 
 rotation_axis = vec(0,0,-1).rotate(angle = -3 * pi/4, axis=vec(1, 0, 0))
-arrow(axis = rotation_axis)
 
 def make_loop(path, angle):
     tmp = path[:]
@@ -166,8 +165,10 @@ def get_current_loop():
         a3, a4 = commutator_angles[i + num_loops]
 #        print(str(a1) + " <= " + theta + " <= " + str(a2))
 #        print(str(a3) + " <= " + theta + " <= " + str(a4))
+
+        angle = theta % (2 * pi)
         
-        if (min(a1, a2) <= theta <= max(a1, a2) or min(a3, a4) <= theta <= max(a3, a4) or min(a1, a2) <= theta - 2 * pi <= max(a1, a2)):
+        if (min(a1, a2) <= angle <= max(a1, a2) or min(a3, a4) <= angle <= max(a3, a4) or min(a1, a2) <= angle - 2 * pi <= max(a1, a2)):
             return i
         
         if (i == num_loops - 1):
@@ -281,7 +282,7 @@ def create_moving_objs():
     
     commutator_segments = []
     dtheta = 2 * pi / total_segments
-    gap = pi/4 / total_segments
+    gap = pi/8 / total_segments
     
     for i in range(total_segments):
         start = i * dtheta
@@ -301,7 +302,7 @@ def create_moving_objs():
     
     delta = height / sqrt(2)
     center += vec(0, -delta, delta)
-    sphere(pos=center, radius=0.1)
+#    sphere(pos=center, radius=0.1) center pos
     commutator = compound(commutator_segments)
     commutator.rotate(axis=vector(1, 0, 0), angle = 3*pi/4)
 
@@ -387,7 +388,8 @@ def delete_moving_objs():
 
 
 def reset(evt):
-    global sliders, slider_text, toggles
+    global sliders, slider_text
+    global magnetic_visible, lorentz_visible, polarity_visible
     global I, B, V, R, load_torque
     global num_loops, num_turns
     global t, theta, omega
@@ -511,9 +513,6 @@ def reset(evt):
             else: 
                 sliders[i].value = init_constants[i]
                 slider_text[i].text = init_slider_text[i].format(init_constants[i])
-            
-        
-        for tog in toggles: tog.checked = True
 
         update_B_arrow()
         delete_moving_objs()
